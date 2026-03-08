@@ -12,6 +12,11 @@ Vagrant.configure("2") do |config|
   # Disable automatic box update checking
   config.vm.box_check_update = false
   
+  # Synced folder configuration - exclude large disk files
+  config.vm.synced_folder ".", "/vagrant",
+    type: "rsync",
+    rsync__exclude: [".git/", ".vagrant/", "asm_disk1.vdi", "asm_disk2.vdi", "asm_disk3.vdi", "*.vdi", "*.vmdk", "*.vbox"]
+  
   # ============================================================================
   # Node 1 Configuration
   # ============================================================================
@@ -159,13 +164,36 @@ Vagrant.configure("2") do |config|
         sleep 2
       done
       
-      # Copy SSH key to node1 (password: vagrant)
+      # Enable root SSH access on both nodes
+      echo "Enabling root SSH access..."
+      sed -i 's/^#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+      systemctl restart sshd
+      
+      # Set root password temporarily for SSH key distribution
+      echo "root:vagrant" | chpasswd
+      
+      # Copy SSH key to node1 via vagrant user and then to root
       echo "Setting up SSH key-based authentication to node1..."
+      su - vagrant -c "ssh -o StrictHostKeyChecking=no vagrant@192.168.1.101 'echo vagrant | sudo -S bash -c \"
+        sed -i \\\"s/^#PermitRootLogin.*/PermitRootLogin yes/\\\" /etc/ssh/sshd_config
+        sed -i \\\"s/^PermitRootLogin.*/PermitRootLogin yes/\\\" /etc/ssh/sshd_config
+        systemctl restart sshd
+        echo root:vagrant | chpasswd
+      \"'" 2>/dev/null || true
+      
+      sleep 2
+      
+      # Now copy SSH key to root@node1
       sshpass -p 'vagrant' ssh-copy-id -o StrictHostKeyChecking=no root@192.168.1.101 2>/dev/null || true
       
       # Copy SSH key to localhost (node2 itself)
       cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
       chmod 600 /root/.ssh/authorized_keys
+      
+      # Test SSH connection
+      echo "Testing SSH connection to node1..."
+      ssh -o StrictHostKeyChecking=no root@192.168.1.101 'echo "SSH connection successful"' || echo "SSH connection failed"
       
       echo "Ansible environment prepared successfully"
     SHELL

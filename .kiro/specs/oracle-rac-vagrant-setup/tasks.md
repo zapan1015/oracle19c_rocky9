@@ -216,7 +216,7 @@
 ### Phase 3: Host에서 검증 (OS 독립적, Python 기반)
 
 - [ ] 14. Property-Based 테스트 작성 (Python, vagrant ssh 사용)
-  - [ ] 14.1 보안 구성 검증 테스트
+  - [-] 14.1 보안 구성 검증 테스트
     - 방화벽 비활성화 검증 (Property 16)
     - SELinux Permissive 모드 검증 (Property 17)
     - SSH Root 로그인 허용 검증 (Property 18)
