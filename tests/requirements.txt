@@ -1,0 +1,12 @@
+# Test Dependencies for Oracle RAC Vagrant Setup
+# Property-Based Testing Framework
+
+# Core testing framework
+pytest>=7.4.0
+
+# Property-based testing
+hypothesis>=6.82.0
+
+# Additional testing utilities
+pytest-cov>=4.1.0
+pytest-xdist>=3.3.1

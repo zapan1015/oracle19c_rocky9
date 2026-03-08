@@ -1,0 +1,32 @@
+# Vagrant
+.vagrant/
+*.box
+
+# VirtualBox VM files
+*.vdi
+*.vmdk
+*.vbox
+*.vbox-prev
+
+# ASM disk images
+asm_disk*.vdi
+
+# Ansible
+*.retry
+ansible/*.retry
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# SSH keys (if generated locally)
+*.pem
+id_rsa*
+
+# Temporary files
+*.tmp
+*.swp
+*~
