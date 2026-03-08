@@ -117,8 +117,67 @@ Vagrant.configure("2") do |config|
     # Hostname configuration
     node2.vm.hostname = "node2.localdomain"
     
-    # Provisioning: Configure /etc/hosts
+    # Provisioning: Configure /etc/hosts (runs first)
     node2.vm.provision "shell", path: "scripts/setup_hosts.sh"
+    
+    # Provisioning: Setup DNS with dnsmasq (runs second)
+    node2.vm.provision "shell", path: "scripts/setup_dnsmasq.sh"
+    
+    # Provisioning: Install Ansible and prepare environment (runs third)
+    node2.vm.provision "shell", inline: <<-SHELL
+      # Install EPEL repository
+      if ! rpm -q epel-release &> /dev/null; then
+        echo "Installing EPEL repository..."
+        dnf install -y epel-release
+      fi
+      
+      # Install Ansible if not already installed
+      if ! command -v ansible &> /dev/null; then
+        echo "Installing Ansible..."
+        dnf install -y ansible-core
+      fi
+      
+      # Install sshpass for SSH key distribution
+      if ! command -v sshpass &> /dev/null; then
+        echo "Installing sshpass..."
+        dnf install -y sshpass
+      fi
+      
+      # Generate SSH key for root if not exists
+      if [ ! -f /root/.ssh/id_rsa ]; then
+        echo "Generating SSH key for root..."
+        ssh-keygen -t rsa -b 2048 -f /root/.ssh/id_rsa -N ""
+      fi
+      
+      # Wait for node1 to be ready
+      echo "Waiting for node1 to be ready..."
+      for i in {1..30}; do
+        if ping -c 1 192.168.1.101 &> /dev/null; then
+          echo "node1 is reachable"
+          break
+        fi
+        sleep 2
+      done
+      
+      # Copy SSH key to node1 (password: vagrant)
+      echo "Setting up SSH key-based authentication to node1..."
+      sshpass -p 'vagrant' ssh-copy-id -o StrictHostKeyChecking=no root@192.168.1.101 2>/dev/null || true
+      
+      # Copy SSH key to localhost (node2 itself)
+      cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
+      chmod 600 /root/.ssh/authorized_keys
+      
+      echo "Ansible environment prepared successfully"
+    SHELL
+    
+    # Provisioning: Run Ansible playbook (runs last)
+    node2.vm.provision "ansible_local" do |ansible|
+      ansible.playbook = "/vagrant/ansible/site.yml"
+      ansible.inventory_path = "/vagrant/ansible/hosts.ini"
+      ansible.limit = "all"
+      ansible.verbose = true
+      ansible.install = false  # Already installed in previous step
+    end
     
     # Network configuration
     # Adapter 1: Public Network (private_network type) - 192.168.1.0/24

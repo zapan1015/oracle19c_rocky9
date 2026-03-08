@@ -1,0 +1,93 @@
+---
+# =============================================================================
+# Time Synchronization Configuration Playbook
+# =============================================================================
+# Configures chrony for time synchronization across RAC nodes
+# Requirements: 8.1, 8.2, 8.3, 8.4
+# =============================================================================
+
+# =============================================================================
+# Chrony Installation (Requirement 8.1)
+# =============================================================================
+- name: Install chrony package
+  dnf:
+    name: chrony
+    state: present
+  tags:
+    - time
+    - chrony
+
+# =============================================================================
+# Chrony Configuration (Requirements 8.2, 8.4)
+# =============================================================================
+- name: Configure chrony with NTP servers
+  template:
+    src: ../templates/chrony.conf.j2
+    dest: /etc/chrony.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  notify: restart chronyd
+  tags:
+    - time
+    - chrony
+
+- name: Ensure chronyd service is running and enabled
+  systemd:
+    name: chronyd
+    state: started
+    enabled: yes
+  tags:
+    - time
+    - chrony
+
+# =============================================================================
+# Time Synchronization Verification (Requirement 8.3)
+# =============================================================================
+- name: Wait for chrony to synchronize
+  pause:
+    seconds: 10
+  tags:
+    - time
+    - verify
+
+- name: Check chrony synchronization status
+  command: chronyc tracking
+  register: chrony_tracking
+  changed_when: false
+  tags:
+    - time
+    - verify
+
+- name: Display chrony tracking information
+  debug:
+    msg: "{{ chrony_tracking.stdout_lines }}"
+  tags:
+    - time
+    - verify
+
+- name: Check chrony sources
+  command: chronyc sources
+  register: chrony_sources
+  changed_when: false
+  tags:
+    - time
+    - verify
+
+- name: Display chrony sources
+  debug:
+    msg: "{{ chrony_sources.stdout_lines }}"
+  tags:
+    - time
+    - verify
+
+# =============================================================================
+# Handlers
+# =============================================================================
+handlers:
+  - name: restart chronyd
+    systemd:
+      name: chronyd
+      state: restarted
+

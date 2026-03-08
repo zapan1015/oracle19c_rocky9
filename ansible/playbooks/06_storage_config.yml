@@ -1,0 +1,116 @@
+---
+# =============================================================================
+# Shared Storage Configuration Playbook
+# =============================================================================
+# Configures udev rules for ASM disks
+# Requirements: 9.7, 9.8, 9.9, 9.10, 9.11, 9.12
+# =============================================================================
+
+# =============================================================================
+# Verify Shared Disks Exist (Requirement 9.12)
+# =============================================================================
+- name: Check if shared disks are available
+  stat:
+    path: "{{ item.device }}"
+  loop: "{{ asm_disks }}"
+  register: disk_check
+  tags:
+    - storage
+    - verify
+
+- name: Display disk availability
+  debug:
+    msg: "Disk {{ item.item.device }} ({{ item.item.name }}): {{ 'Available' if item.stat.exists else 'NOT FOUND' }}"
+  loop: "{{ disk_check.results }}"
+  tags:
+    - storage
+    - verify
+
+- name: Fail if any disk is missing
+  fail:
+    msg: "Required disk {{ item.item.device }} is not available"
+  when: not item.stat.exists
+  loop: "{{ disk_check.results }}"
+  tags:
+    - storage
+
+# =============================================================================
+# Create udev Rules (Requirements 9.7, 9.8, 9.9, 9.10)
+# =============================================================================
+- name: Create udev rules for ASM disks
+  template:
+    src: ../templates/99-oracle-asmdevices.rules.j2
+    dest: /etc/udev/rules.d/99-oracle-asmdevices.rules
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  notify:
+    - reload udev rules
+    - trigger udev
+  tags:
+    - storage
+    - udev
+
+# =============================================================================
+# Apply udev Rules (Requirement 9.11)
+# =============================================================================
+- name: Flush handlers to apply udev rules immediately
+  meta: flush_handlers
+  tags:
+    - storage
+    - udev
+
+- name: Wait for udev to process rules
+  pause:
+    seconds: 5
+  tags:
+    - storage
+    - udev
+
+# =============================================================================
+# Verify Disk Permissions (Requirement 9.12)
+# =============================================================================
+- name: Verify disk ownership and permissions
+  stat:
+    path: "{{ item.device }}"
+  loop: "{{ asm_disks }}"
+  register: disk_permissions
+  tags:
+    - storage
+    - verify
+
+- name: Display disk permissions
+  debug:
+    msg:
+      - "Disk: {{ item.item.device }}"
+      - "Owner: {{ item.stat.pw_name }} (expected: {{ item.item.owner }})"
+      - "Group: {{ item.stat.gr_name }} (expected: {{ item.item.group }})"
+      - "Mode: {{ item.stat.mode }} (expected: {{ item.item.mode }})"
+  loop: "{{ disk_permissions.results }}"
+  tags:
+    - storage
+    - verify
+
+- name: Verify disk ownership is correct
+  assert:
+    that:
+      - item.stat.pw_name == item.item.owner
+      - item.stat.gr_name == item.item.group
+    fail_msg: "Disk {{ item.item.device }} has incorrect ownership"
+    success_msg: "Disk {{ item.item.device }} ownership is correct"
+  loop: "{{ disk_permissions.results }}"
+  tags:
+    - storage
+    - verify
+
+# =============================================================================
+# Handlers
+# =============================================================================
+handlers:
+  - name: reload udev rules
+    command: udevadm control --reload-rules
+    
+  - name: trigger udev
+    command: udevadm trigger --type=devices --action=change
+

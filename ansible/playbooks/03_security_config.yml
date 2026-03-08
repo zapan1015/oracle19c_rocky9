@@ -1,0 +1,106 @@
+---
+# =============================================================================
+# Security Configuration Playbook
+# =============================================================================
+# Configures firewall, SELinux, and SSH settings for Oracle RAC
+# Requirements: 6.1, 6.2, 6.3, 6.4
+# =============================================================================
+
+# =============================================================================
+# Firewall Configuration (Requirement 6.1)
+# =============================================================================
+- name: Stop and disable firewalld service
+  systemd:
+    name: firewalld
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+  tags:
+    - firewall
+
+- name: Verify firewalld is disabled
+  systemd:
+    name: firewalld
+  register: firewalld_status
+  failed_when: false
+  tags:
+    - firewall
+
+- name: Display firewalld status
+  debug:
+    msg: "Firewalld status: {{ firewalld_status.status.ActiveState }}"
+  tags:
+    - firewall
+
+# =============================================================================
+# SELinux Configuration (Requirements 6.2, 6.3)
+# =============================================================================
+- name: Set SELinux to permissive mode (runtime)
+  selinux:
+    policy: targeted
+    state: permissive
+  tags:
+    - selinux
+
+- name: Set SELinux to permissive mode (persistent)
+  lineinfile:
+    path: /etc/selinux/config
+    regexp: '^SELINUX='
+    line: 'SELINUX=permissive'
+    backup: yes
+  tags:
+    - selinux
+
+- name: Verify SELinux configuration
+  command: getenforce
+  register: selinux_status
+  changed_when: false
+  tags:
+    - selinux
+
+- name: Display SELinux status
+  debug:
+    msg: "SELinux status: {{ selinux_status.stdout }}"
+  tags:
+    - selinux
+
+# =============================================================================
+# SSH Configuration (Requirement 6.4)
+# =============================================================================
+- name: Configure SSH to permit root login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin yes'
+    backup: yes
+  notify: restart sshd
+  tags:
+    - ssh
+
+- name: Configure SSH to permit password authentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication yes'
+    backup: yes
+  notify: restart sshd
+  tags:
+    - ssh
+
+- name: Ensure SSH service is running and enabled
+  systemd:
+    name: sshd
+    state: started
+    enabled: yes
+  tags:
+    - ssh
+
+# =============================================================================
+# Handlers
+# =============================================================================
+handlers:
+  - name: restart sshd
+    systemd:
+      name: sshd
+      state: restarted
+

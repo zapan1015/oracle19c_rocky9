@@ -1,0 +1,161 @@
+---
+# =============================================================================
+# SSH User Equivalence Configuration Playbook
+# =============================================================================
+# Configures password-less SSH for grid and oracle users between RAC nodes
+# Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9
+# =============================================================================
+
+# =============================================================================
+# SSH Key Generation (Requirements 7.1, 7.2)
+# =============================================================================
+- name: Generate SSH key for grid user
+  user:
+    name: grid
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+    ssh_key_file: .ssh/id_rsa
+    ssh_key_comment: "grid@{{ ansible_hostname }}"
+  tags:
+    - ssh
+    - grid
+
+- name: Generate SSH key for oracle user
+  user:
+    name: oracle
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+    ssh_key_file: .ssh/id_rsa
+    ssh_key_comment: "oracle@{{ ansible_hostname }}"
+  tags:
+    - ssh
+    - oracle
+
+# =============================================================================
+# SSH Public Key Collection (Requirements 7.3, 7.4)
+# =============================================================================
+- name: Fetch grid user public key from all nodes
+  fetch:
+    src: /home/grid/.ssh/id_rsa.pub
+    dest: /tmp/ssh_keys/grid_{{ inventory_hostname }}.pub
+    flat: yes
+  tags:
+    - ssh
+    - grid
+
+- name: Fetch oracle user public key from all nodes
+  fetch:
+    src: /home/oracle/.ssh/id_rsa.pub
+    dest: /tmp/ssh_keys/oracle_{{ inventory_hostname }}.pub
+    flat: yes
+  tags:
+    - ssh
+    - oracle
+
+# =============================================================================
+# SSH Public Key Distribution (Requirements 7.3, 7.4)
+# =============================================================================
+- name: Distribute grid public keys to all nodes
+  authorized_key:
+    user: grid
+    key: "{{ lookup('file', '/tmp/ssh_keys/grid_' + item + '.pub') }}"
+    state: present
+  loop: "{{ groups['rac_nodes'] }}"
+  tags:
+    - ssh
+    - grid
+
+- name: Distribute oracle public keys to all nodes
+  authorized_key:
+    user: oracle
+    key: "{{ lookup('file', '/tmp/ssh_keys/oracle_' + item + '.pub') }}"
+    state: present
+  loop: "{{ groups['rac_nodes'] }}"
+  tags:
+    - ssh
+    - oracle
+
+# =============================================================================
+# SSH Known Hosts Configuration
+# =============================================================================
+- name: Add all RAC nodes to known_hosts for grid user
+  known_hosts:
+    name: "{{ item }}"
+    key: "{{ lookup('pipe', 'ssh-keyscan -H ' + item) }}"
+    path: /home/grid/.ssh/known_hosts
+    state: present
+  loop:
+    - node1
+    - node1.localdomain
+    - 192.168.1.101
+    - node2
+    - node2.localdomain
+    - 192.168.1.102
+  become_user: grid
+  tags:
+    - ssh
+    - grid
+
+- name: Add all RAC nodes to known_hosts for oracle user
+  known_hosts:
+    name: "{{ item }}"
+    key: "{{ lookup('pipe', 'ssh-keyscan -H ' + item) }}"
+    path: /home/oracle/.ssh/known_hosts
+    state: present
+  loop:
+    - node1
+    - node1.localdomain
+    - 192.168.1.101
+    - node2
+    - node2.localdomain
+    - 192.168.1.102
+  become_user: oracle
+  tags:
+    - ssh
+    - oracle
+
+# =============================================================================
+# SSH User Equivalence Verification (Requirements 7.6, 7.7, 7.8, 7.9)
+# =============================================================================
+- name: Verify SSH User Equivalence for grid user
+  command: ssh -o BatchMode=yes -o StrictHostKeyChecking=no grid@{{ item }} hostname
+  loop: "{{ groups['rac_nodes'] }}"
+  register: grid_ssh_test
+  changed_when: false
+  failed_when: false
+  become_user: grid
+  tags:
+    - ssh
+    - grid
+    - verify
+
+- name: Display grid SSH test results
+  debug:
+    msg: "Grid SSH to {{ item.item }}: {{ 'SUCCESS' if item.rc == 0 else 'FAILED' }}"
+  loop: "{{ grid_ssh_test.results }}"
+  tags:
+    - ssh
+    - grid
+    - verify
+
+- name: Verify SSH User Equivalence for oracle user
+  command: ssh -o BatchMode=yes -o StrictHostKeyChecking=no oracle@{{ item }} hostname
+  loop: "{{ groups['rac_nodes'] }}"
+  register: oracle_ssh_test
+  changed_when: false
+  failed_when: false
+  become_user: oracle
+  tags:
+    - ssh
+    - oracle
+    - verify
+
+- name: Display oracle SSH test results
+  debug:
+    msg: "Oracle SSH to {{ item.item }}: {{ 'SUCCESS' if item.rc == 0 else 'FAILED' }}"
+  loop: "{{ oracle_ssh_test.results }}"
+  tags:
+    - ssh
+    - oracle
+    - verify
+

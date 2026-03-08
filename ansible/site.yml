@@ -1,0 +1,116 @@
+---
+# =============================================================================
+# Oracle RAC 2-Node Cluster Configuration Playbook
+# =============================================================================
+# This playbook configures both node1 and node2 for Oracle 19c RAC
+# Executed from node2 (Ansible control node) via Vagrant provisioner
+#
+# Execution order:
+#   1. Oracle users and groups
+#   2. Package installation and OS configuration
+#   3. Security configuration
+#   4. SSH User Equivalence
+#   5. Time synchronization
+#   6. Shared storage configuration
+#   7. Systemd and cgroup configuration
+#
+# Requirements: Rocky Linux 9, Oracle 19.19+ RU
+# =============================================================================
+
+- name: Configure Oracle RAC Nodes
+  hosts: rac_nodes
+  become: yes
+  gather_facts: yes
+  
+  tasks:
+    # =========================================================================
+    # Phase 1: Oracle Users and Groups Configuration
+    # =========================================================================
+    - name: Include Oracle users and groups playbook
+      include_tasks: playbooks/01_oracle_users_groups.yml
+      tags:
+        - users
+        - groups
+        - directories
+    
+    # =========================================================================
+    # Phase 2: Package Installation and OS Configuration
+    # =========================================================================
+    - name: Include package installation and OS configuration playbook
+      include_tasks: playbooks/02_packages_os_config.yml
+      tags:
+        - packages
+        - kernel
+        - limits
+    
+    # =========================================================================
+    # Phase 3: Security Configuration
+    # =========================================================================
+    - name: Include security configuration playbook
+      include_tasks: playbooks/03_security_config.yml
+      tags:
+        - security
+        - firewall
+        - selinux
+        - ssh
+    
+    # =========================================================================
+    # Phase 4: SSH User Equivalence
+    # =========================================================================
+    - name: Include SSH User Equivalence playbook
+      include_tasks: playbooks/04_ssh_equivalence.yml
+      tags:
+        - ssh
+        - equivalence
+    
+    # =========================================================================
+    # Phase 5: Time Synchronization
+    # =========================================================================
+    - name: Include time synchronization playbook
+      include_tasks: playbooks/05_time_sync.yml
+      tags:
+        - time
+        - chrony
+    
+    # =========================================================================
+    # Phase 6: Shared Storage Configuration
+    # =========================================================================
+    - name: Include shared storage configuration playbook
+      include_tasks: playbooks/06_storage_config.yml
+      tags:
+        - storage
+        - udev
+        - asm
+    
+    # =========================================================================
+    # Phase 7: Systemd and Cgroup Configuration
+    # =========================================================================
+    - name: Include systemd and cgroup configuration playbook
+      include_tasks: playbooks/07_systemd_config.yml
+      tags:
+        - systemd
+        - cgroup
+    
+    # =========================================================================
+    # Final Verification
+    # =========================================================================
+    - name: Display configuration summary
+      debug:
+        msg:
+          - "=============================================="
+          - "Oracle RAC Configuration Complete"
+          - "=============================================="
+          - "Node: {{ ansible_hostname }}"
+          - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+          - "Kernel: {{ ansible_kernel }}"
+          - "Memory: {{ ansible_memtotal_mb }} MB"
+          - "CPUs: {{ ansible_processor_vcpus }}"
+          - "=============================================="
+          - "Next Steps:"
+          - "1. Verify configuration: vagrant ssh node2 -c 'bash /vagrant/tests/verify_all.sh'"
+          - "2. Install Oracle Grid Infrastructure 19.19+"
+          - "3. Install Oracle Database 19.19+"
+          - "=============================================="
+      tags:
+        - always
+
