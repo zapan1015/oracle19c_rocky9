@@ -1,0 +1,114 @@
+---
+# Ansible Playbook: Oracle Users and Groups Configuration
+# This playbook creates Oracle groups, users, and directory structure
+# Runs on node2 (Ansible control node) and applies to both node1 and node2
+# Requirements: 4.1-4.13
+
+- name: Configure Oracle Users, Groups, and Directories
+  hosts: rac_nodes
+  become: yes
+  gather_facts: yes
+  
+  tasks:
+    # =========================================================================
+    # Oracle Groups Creation (Requirements 4.1-4.5)
+    # =========================================================================
+    - name: Create Oracle groups with specified GIDs
+      group:
+        name: "{{ item.name }}"
+        gid: "{{ item.gid }}"
+        state: present
+      loop: "{{ oracle_groups }}"
+      loop_control:
+        label: "{{ item.name }} (GID: {{ item.gid }})"
+      tags:
+        - oracle_groups
+        - users_groups
+
+    # =========================================================================
+    # Oracle Users Creation (Requirements 4.6-4.9)
+    # =========================================================================
+    - name: Create Oracle users with specified UIDs and group memberships
+      user:
+        name: "{{ item.name }}"
+        uid: "{{ item.uid }}"
+        group: "{{ item.primary_group }}"
+        groups: "{{ item.secondary_groups | join(',') }}"
+        home: "{{ item.home }}"
+        shell: "{{ item.shell }}"
+        comment: "{{ item.comment }}"
+        create_home: yes
+        state: present
+      loop: "{{ oracle_users }}"
+      loop_control:
+        label: "{{ item.name }} (UID: {{ item.uid }})"
+      tags:
+        - oracle_users
+        - users_groups
+
+    # =========================================================================
+    # Oracle Directory Structure Creation (Requirements 4.10-4.13)
+    # =========================================================================
+    - name: Create Oracle directory structure with correct ownership
+      file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: "{{ item.mode }}"
+        recurse: yes
+      loop: "{{ oracle_directories }}"
+      loop_control:
+        label: "{{ item.path }} (owner: {{ item.owner }})"
+      tags:
+        - oracle_directories
+        - users_groups
+
+    # =========================================================================
+    # Verification Tasks
+    # =========================================================================
+    - name: Verify Oracle groups exist
+      getent:
+        database: group
+        key: "{{ item.name }}"
+      loop: "{{ oracle_groups }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: group_verification
+      tags:
+        - verify
+        - users_groups
+
+    - name: Verify Oracle users exist
+      getent:
+        database: passwd
+        key: "{{ item.name }}"
+      loop: "{{ oracle_users }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: user_verification
+      tags:
+        - verify
+        - users_groups
+
+    - name: Verify Oracle directories exist with correct permissions
+      stat:
+        path: "{{ item.path }}"
+      loop: "{{ oracle_directories }}"
+      loop_control:
+        label: "{{ item.path }}"
+      register: directory_verification
+      tags:
+        - verify
+        - users_groups
+
+    - name: Display verification results
+      debug:
+        msg: |
+          Oracle Users and Groups Configuration Complete:
+          - Groups created: {{ oracle_groups | map(attribute='name') | join(', ') }}
+          - Users created: {{ oracle_users | map(attribute='name') | join(', ') }}
+          - Directories created: {{ oracle_directories | map(attribute='path') | join(', ') }}
+      tags:
+        - verify
+        - users_groups

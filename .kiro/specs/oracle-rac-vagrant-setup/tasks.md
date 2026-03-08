@@ -54,12 +54,12 @@
     - _요구사항: 3.10_
 
 - [ ] 4. Ansible 인벤토리 및 기본 구조 생성
-  - [~] 4.1 Ansible 인벤토리 파일 작성 (ansible/hosts.ini)
+  - [x] 4.1 Ansible 인벤토리 파일 작성 (ansible/hosts.ini)
     - rac_nodes 그룹 정의 (node1, node2)
     - 연결 변수 설정 (ansible_user, ansible_host)
     - _요구사항: 12.1, 12.2, 12.3, 12.4_
   
-  - [~] 4.2 Ansible 변수 파일 작성 (ansible/group_vars/rac_nodes.yml)
+  - [x] 4.2 Ansible 변수 파일 작성 (ansible/group_vars/rac_nodes.yml)
     - Oracle 그룹/사용자 정의 (UID/GID)
     - 디렉토리 경로 정의
     - 커널 매개변수 정의
@@ -67,44 +67,44 @@
     - _요구사항: 4.1-4.13, 10.1-10.9, 11.1-11.5_
 
 - [ ] 5. Ansible Playbook - Oracle 사용자 및 그룹 구성
-  - [~] 5.1 Oracle 그룹 생성 태스크 작성
+  - [x] 5.1 Oracle 그룹 생성 태스크 작성
     - oinstall, dba, asmdba, asmoper, asmadmin 그룹 생성
     - 지정된 GID 사용
     - _요구사항: 4.1, 4.2, 4.3, 4.4, 4.5_
   
-  - [~] 5.2 Oracle 사용자 생성 태스크 작성
+  - [x] 5.2 Oracle 사용자 생성 태스크 작성
     - grid 및 oracle 사용자 생성
     - 지정된 UID 및 그룹 멤버십 설정
     - _요구사항: 4.6, 4.7, 4.8, 4.9_
   
-  - [~] 5.3 Oracle 디렉토리 생성 태스크 작성
+  - [x] 5.3 Oracle 디렉토리 생성 태스크 작성
     - /u01/app/grid, /u01/app/19.3.0/grid 생성 (소유자: grid)
     - /u01/app/oracle, /u01/app/oracle/product/19.3.0/dbhome_1 생성 (소유자: oracle)
     - 올바른 권한 및 소유권 설정
     - _요구사항: 4.10, 4.11, 4.12, 4.13_
   
-  - [~] 5.4 사용자/그룹 구성 검증 테스트 작성
+  - [x] 5.4 사용자/그룹 구성 검증 테스트 작성
     - Oracle 그룹 구성 검증 (Property 10)
     - Oracle 사용자 구성 검증 (Property 11)
     - Oracle 디렉토리 구조 검증 (Property 12)
 
 - [ ] 6. Ansible Playbook - 패키지 설치 및 OS 구성
-  - [~] 6.1 Oracle Preinstall 패키지 설치 태스크 작성
+  - [x] 6.1 Oracle Preinstall 패키지 설치 태스크 작성
     - oracle-database-preinstall-19c 패키지 설치
     - 필요한 추가 RPM 패키지 설치
     - _요구사항: 5.1, 5.4_
   
-  - [~] 6.2 커널 매개변수 구성 태스크 작성
+  - [x] 6.2 커널 매개변수 구성 태스크 작성
     - sysctl을 통한 커널 매개변수 설정 (shmmax, shmall, shmmni, file-max, ip_local_port_range)
     - /etc/sysctl.conf 파일 업데이트
     - _요구사항: 5.2, 10.1, 10.2, 10.3, 10.4, 10.5_
   
-  - [~] 6.3 리소스 제한 구성 태스크 작성
+  - [x] 6.3 리소스 제한 구성 태스크 작성
     - /etc/security/limits.conf 파일 업데이트
     - grid 및 oracle 사용자의 nofile, nproc 제한 설정
     - _요구사항: 5.3, 10.6, 10.7, 10.8, 10.9_
   
-  - [~] 6.4 패키지 및 OS 구성 검증 테스트 작성
+  - [x] 6.4 패키지 및 OS 구성 검증 테스트 작성
     - Oracle Preinstall 패키지 설치 검증 (Property 13)
     - 커널 매개변수 검증 (Property 14)
     - 리소스 제한 검증 (Property 15)

@@ -50,6 +50,18 @@
 - **검증 요구사항**: 3.10
 - **설명**: 모든 구성된 호스트 이름에 대해 DNS 조회가 올바른 IP 주소를 반환해야 함
 
+#### Property 10: Oracle 그룹 구성
+- **검증 요구사항**: 4.1, 4.2, 4.3, 4.4, 4.5
+- **설명**: 모든 RAC 노드에 대해 Oracle 그룹들(oinstall, dba, asmdba, asmoper, asmadmin)이 지정된 GID로 존재해야 함
+
+#### Property 11: Oracle 사용자 구성
+- **검증 요구사항**: 4.6, 4.7, 4.8, 4.9
+- **설명**: 모든 RAC 노드에 대해 grid 사용자(UID 54331)와 oracle 사용자(UID 54321)가 기본 그룹 oinstall로 존재하고 올바른 보조 그룹에 속해야 함
+
+#### Property 12: Oracle 디렉토리 구조
+- **검증 요구사항**: 4.10, 4.11, 4.12, 4.13
+- **설명**: 모든 RAC 노드에 대해 필요한 모든 Oracle 디렉토리가 올바른 소유자와 그룹으로 존재해야 함
+
 ## 사전 요구사항
 
 ### 필수 소프트웨어
@@ -182,6 +194,28 @@ vagrant ssh node2 -c "sudo bash /vagrant/scripts/setup_dnsmasq.sh"
 pytest tests/ -v
 ```
 
+### 시나리오 5: Oracle 사용자/그룹/디렉토리 검증
+
+이 테스트들은 VM이 실행 중이고 Ansible 플레이북이 실행되어야 합니다:
+
+```bash
+# 먼저 VM 프로비저닝
+vagrant up
+
+# Ansible 플레이북 실행 (node2에서)
+vagrant ssh node2 -c "cd /vagrant/ansible && ansible-playbook -i hosts.ini playbooks/01_oracle_users_groups.yml"
+
+# Oracle 사용자/그룹/디렉토리 속성 테스트 실행
+pytest tests/test_oracle_users_groups_properties.py -v
+
+# 또는 편리한 스크립트 사용
+# Linux/Mac
+bash tests/run_users_groups_tests.sh
+
+# Windows
+tests\run_users_groups_tests.bat
+```
+
 ## 테스트 결과 해석
 
 ### 성공 예시
@@ -198,6 +232,11 @@ tests/test_vagrantfile_properties.py::test_property_5_network_adapter_configurat
 tests/test_dns_properties.py::test_property_7_dns_service_availability PASSED
 tests/test_dns_properties.py::test_property_8_dns_round_robin PASSED
 tests/test_dns_properties.py::test_property_9_dns_resolution_accuracy PASSED
+
+# Oracle 사용자/그룹/디렉토리 테스트
+tests/test_oracle_users_groups_properties.py::test_property_10_oracle_groups_configuration PASSED
+tests/test_oracle_users_groups_properties.py::test_property_11_oracle_users_configuration PASSED
+tests/test_oracle_users_groups_properties.py::test_property_12_oracle_directory_structure PASSED
 ```
 
 ### 실패 예시
@@ -210,6 +249,10 @@ AssertionError: node1 should have 8192MB RAM, got 4096MB
 # DNS 테스트 실패
 FAILED tests/test_dns_properties.py::test_property_9_dns_resolution_accuracy
 AssertionError: Hostname node1.localdomain should resolve to 192.168.1.101, got []
+
+# Oracle 사용자/그룹 테스트 실패
+FAILED tests/test_oracle_users_groups_properties.py::test_property_10_oracle_groups_configuration
+AssertionError: Group oinstall has GID 1001, expected 54321 on node1
 ```
 
 ## 문제 해결
@@ -249,6 +292,9 @@ SKIPPED [1] tests/test_vagrantfile_properties.py:123: VM node1 is not running
 
 # DNS가 구성되지 않았을 때
 SKIPPED [1] tests/test_dns_properties.py:234: dnsmasq is not running on node2. Run setup_dnsmasq.sh first.
+
+# Ansible 플레이북이 실행되지 않았을 때
+SKIPPED [1] tests/test_oracle_users_groups_properties.py:123: Oracle groups not configured. Run Ansible playbook first.
 ```
 
 이는 정상적인 동작이며, 필요한 설정을 완료한 후 다시 테스트하세요:
@@ -259,6 +305,9 @@ vagrant up
 
 # DNS 설정
 vagrant ssh node2 -c "sudo bash /vagrant/scripts/setup_dnsmasq.sh"
+
+# Oracle 사용자/그룹 설정
+vagrant ssh node2 -c "cd /vagrant/ansible && ansible-playbook -i hosts.ini playbooks/01_oracle_users_groups.yml"
 ```
 
 ## CI/CD 통합
@@ -313,6 +362,12 @@ DNS 구성 검증을 위한 속성 기반 테스트:
 - Property 7: DNS 서비스 가용성
 - Property 8: DNS 라운드 로빈
 - Property 9: DNS 해석 정확성
+
+### test_oracle_users_groups_properties.py
+Oracle 사용자, 그룹, 디렉토리 구성 검증을 위한 속성 기반 테스트:
+- Property 10: Oracle 그룹 구성
+- Property 11: Oracle 사용자 구성
+- Property 12: Oracle 디렉토리 구조
 
 각 테스트 파일은 다음을 포함합니다:
 - 속성 기반 테스트 (최소 100회 반복)

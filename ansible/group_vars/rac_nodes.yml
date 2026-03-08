@@ -1,0 +1,301 @@
+---
+# Ansible Group Variables for Oracle RAC Nodes
+# This file defines all Oracle-related configuration parameters
+# Applied to both node1 and node2 by Ansible running on node2
+
+# =============================================================================
+# Oracle Groups Configuration (Requirements 4.1-4.5)
+# =============================================================================
+oracle_groups:
+  - name: oinstall
+    gid: 54321
+    description: "Oracle Inventory Group"
+  - name: dba
+    gid: 54322
+    description: "Database Administrator Group"
+  - name: asmdba
+    gid: 54327
+    description: "ASM Database Administrator Group"
+  - name: asmoper
+    gid: 54328
+    description: "ASM Operator Group"
+  - name: asmadmin
+    gid: 54329
+    description: "ASM Administrator Group"
+
+# =============================================================================
+# Oracle Users Configuration (Requirements 4.6-4.9)
+# =============================================================================
+oracle_users:
+  - name: grid
+    uid: 54331
+    primary_group: oinstall
+    secondary_groups:
+      - asmadmin
+      - asmdba
+      - asmoper
+    home: /home/grid
+    shell: /bin/bash
+    comment: "Grid Infrastructure Owner"
+  - name: oracle
+    uid: 54321
+    primary_group: oinstall
+    secondary_groups:
+      - dba
+      - asmdba
+      - asmadmin
+    home: /home/oracle
+    shell: /bin/bash
+    comment: "Oracle Database Owner"
+
+# =============================================================================
+# Oracle Directory Paths (Requirements 4.10-4.13)
+# =============================================================================
+oracle_directories:
+  - path: /u01/app/grid
+    owner: grid
+    group: oinstall
+    mode: '0755'
+    description: "Grid Infrastructure Base"
+  - path: /u01/app/19.3.0/grid
+    owner: grid
+    group: oinstall
+    mode: '0755'
+    description: "Grid Infrastructure Home"
+  - path: /u01/app/oracle
+    owner: oracle
+    group: oinstall
+    mode: '0755'
+    description: "Oracle Base"
+  - path: /u01/app/oracle/product/19.3.0/dbhome_1
+    owner: oracle
+    group: oinstall
+    mode: '0755'
+    description: "Oracle Database Home"
+
+# =============================================================================
+# Kernel Parameters (Requirements 10.1-10.5)
+# =============================================================================
+kernel_parameters:
+  # Shared Memory Parameters
+  - name: kernel.shmmax
+    value: 4398046511104
+    description: "Maximum shared memory segment size (4TB)"
+  - name: kernel.shmall
+    value: 1073741824
+    description: "Total shared memory pages"
+  - name: kernel.shmmni
+    value: 4096
+    description: "Maximum number of shared memory segments"
+  
+  # File System Parameters
+  - name: fs.file-max
+    value: 6815744
+    description: "Maximum number of file handles"
+  
+  # Network Parameters
+  - name: net.ipv4.ip_local_port_range
+    value: "9000 65500"
+    description: "Local port range for outbound connections"
+  
+  # Additional Oracle RAC Parameters
+  - name: net.core.rmem_default
+    value: 262144
+    description: "Default receive socket buffer size"
+  - name: net.core.rmem_max
+    value: 4194304
+    description: "Maximum receive socket buffer size"
+  - name: net.core.wmem_default
+    value: 262144
+    description: "Default send socket buffer size"
+  - name: net.core.wmem_max
+    value: 1048576
+    description: "Maximum send socket buffer size"
+
+# =============================================================================
+# Resource Limits (Requirements 10.6-10.9)
+# =============================================================================
+resource_limits:
+  # Grid User Limits
+  - domain: grid
+    limit_type: soft
+    limit_item: nofile
+    value: 1024
+    description: "Soft limit for open files"
+  - domain: grid
+    limit_type: hard
+    limit_item: nofile
+    value: 65536
+    description: "Hard limit for open files"
+  - domain: grid
+    limit_type: soft
+    limit_item: nproc
+    value: 16384
+    description: "Soft limit for processes"
+  - domain: grid
+    limit_type: hard
+    limit_item: nproc
+    value: 16384
+    description: "Hard limit for processes"
+  - domain: grid
+    limit_type: soft
+    limit_item: stack
+    value: 10240
+    description: "Soft limit for stack size (KB)"
+  - domain: grid
+    limit_type: hard
+    limit_item: stack
+    value: 32768
+    description: "Hard limit for stack size (KB)"
+  
+  # Oracle User Limits
+  - domain: oracle
+    limit_type: soft
+    limit_item: nofile
+    value: 1024
+    description: "Soft limit for open files"
+  - domain: oracle
+    limit_type: hard
+    limit_item: nofile
+    value: 65536
+    description: "Hard limit for open files"
+  - domain: oracle
+    limit_type: soft
+    limit_item: nproc
+    value: 16384
+    description: "Soft limit for processes"
+  - domain: oracle
+    limit_type: hard
+    limit_item: nproc
+    value: 16384
+    description: "Hard limit for processes"
+  - domain: oracle
+    limit_type: soft
+    limit_item: stack
+    value: 10240
+    description: "Soft limit for stack size (KB)"
+  - domain: oracle
+    limit_type: hard
+    limit_item: stack
+    value: 32768
+    description: "Hard limit for stack size (KB)"
+
+# =============================================================================
+# Systemd Configuration (Requirements 11.1-11.5)
+# =============================================================================
+systemd_settings:
+  # System.conf settings
+  system_conf:
+    - option: DefaultTasksMax
+      value: infinity
+      description: "Remove task limit for Oracle processes"
+    - option: DefaultMemoryAccounting
+      value: "yes"
+      description: "Enable memory accounting for cgroup v2"
+  
+  # Logind.conf settings
+  logind_conf:
+    - option: RemoveIPC
+      value: "no"
+      description: "Prevent removal of Oracle IPC resources"
+
+# OOM Killer Prevention
+oom_killer_settings:
+  enabled: true
+  description: "Prevent OOM killer from terminating Oracle processes"
+
+# =============================================================================
+# ASM Disk Configuration (Requirements 9.7-9.11)
+# =============================================================================
+asm_disks:
+  - device: /dev/sdb
+    name: asm_disk1
+    owner: grid
+    group: asmadmin
+    mode: '0660'
+    diskgroup: DATA
+    size: 20GB
+  - device: /dev/sdc
+    name: asm_disk2
+    owner: grid
+    group: asmadmin
+    mode: '0660'
+    diskgroup: DATA
+    size: 20GB
+  - device: /dev/sdd
+    name: asm_disk3
+    owner: grid
+    group: asmadmin
+    mode: '0660'
+    diskgroup: FRA
+    size: 10GB
+
+# =============================================================================
+# Network Configuration
+# =============================================================================
+network_config:
+  public_network:
+    subnet: 192.168.1.0/24
+    interface: eth0
+  private_network:
+    subnet: 10.0.0.0/24
+    interface: eth1
+
+# =============================================================================
+# Oracle Software Configuration
+# =============================================================================
+oracle_version: "19.3.0"
+oracle_ru_version: "19.19"
+oracle_ru_required: true
+oracle_ru_description: "Oracle 19.19+ RU required for Rocky Linux 9 compatibility"
+
+# Grid Infrastructure paths
+grid_base: /u01/app/grid
+grid_home: /u01/app/19.3.0/grid
+oracle_base: /u01/app/oracle
+oracle_home: /u01/app/oracle/product/19.3.0/dbhome_1
+
+# =============================================================================
+# Package Configuration
+# =============================================================================
+required_packages:
+  - oracle-database-preinstall-19c
+  - chrony
+  - net-tools
+  - bind-utils
+  - nfs-utils
+  - smartmontools
+
+# =============================================================================
+# Security Configuration (Requirements 6.1-6.4)
+# =============================================================================
+security_settings:
+  firewalld_enabled: false
+  selinux_mode: permissive
+  ssh_root_login: "yes"
+  ssh_password_authentication: "yes"
+
+# =============================================================================
+# SSH Key Configuration (Requirements 7.1-7.2)
+# =============================================================================
+ssh_key_settings:
+  key_type: rsa
+  key_bits: 2048
+  key_comment: "Oracle RAC SSH Key"
+
+# =============================================================================
+# Time Synchronization (Requirements 8.1-8.4)
+# =============================================================================
+chrony_settings:
+  ntp_servers:
+    - 0.pool.ntp.org
+    - 1.pool.ntp.org
+    - 2.pool.ntp.org
+  max_time_diff_seconds: 1
+  enabled: true
+
+# =============================================================================
+# Validation Settings
+# =============================================================================
+validation_enabled: true
+validation_fail_on_error: true
